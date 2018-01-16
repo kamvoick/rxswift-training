@@ -1,0 +1,16 @@
+platform :ios, '11.0'
+
+target 'rxswift-training' do
+  # Comment the next line if you're not using Swift and don't want to use dynamic frameworks
+  use_frameworks!
+
+  # Pods for rxswift-training
+  pod 'RxSwift'
+  pod 'RxCocoa' 
+
+  target 'rxswift-trainingTests' do
+    inherit! :search_paths
+    # Pods for testing
+  end
+
+end
