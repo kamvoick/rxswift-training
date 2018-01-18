@@ -124,7 +124,7 @@ class rxswift_trainingTests: XCTestCase {
             subject.onNext(2)
         }
         
-        snippet(name: "BehaviorSubject") {
+        snippet(name: "ReplaySubject") {
             let subject = ReplaySubject<Int>.create(bufferSize: 3)
             subject.onNext(1)
             subject.onNext(2)
@@ -253,7 +253,7 @@ class rxswift_trainingTests: XCTestCase {
         }
         
         snippet(name: "Flat map on array") {
-            Observable.of([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+            Observable.of([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [11, 12])
                 .flatMap { Observable.from($0) }
                 .subscribe(onNext: { print($0) })
                 .disposed(by: disposeBag)
@@ -270,8 +270,8 @@ class rxswift_trainingTests: XCTestCase {
                 .subscribe(onNext: { print($0) })
                 .disposed(by: disposeBag)
             
-            subject.onNext(left)
-            subject.onNext(right)
+            subject.onNext(left.asObservable())
+            subject.onNext(right.asObservable())
             
             left.onNext(1)
             left.onNext(2)
@@ -421,6 +421,40 @@ class rxswift_trainingTests: XCTestCase {
                 .disposed(by: disposeBag)
             Thread.sleep(forTimeInterval: 10.0)
         }
+    }
+
+    
+    func testErrorsCatching() {
+        enum TestErrors: Error {
+            case failed
+        }
+        
+        let maxAttempts = 5
+        let scheduler = SerialDispatchQueueScheduler(qos: .default)
+        
+        Observable.create { observer in
+            observer.onNext(1)
+            observer.onError(TestErrors.failed)
+            print("###")
+            observer.onNext(1)
+            return Disposables.create()
+        }
+        //.retry(3)
+        //.catchError { error in Observable.of(0)  }
+        //.catchErrorJustReturn(0)
+        .retryWhen { error in
+            return error.enumerated().flatMap { (attempt, error) -> Observable<Int> in
+                print("Attempt: \(attempt)")
+                if attempt >= maxAttempts - 1 {
+                    return Observable.error(error)
+                }
+                return Observable<Int>.timer(Double(attempt + 1), scheduler: scheduler).take(1)
+            }
+        }
+        .subscribe(onNext: { print($0) }, onError: { print($0) }, onCompleted: { print("completed") } )
+        .disposed(by: disposeBag)
+        
+        Thread.sleep(forTimeInterval: 1000.0)
     }
     
 }
